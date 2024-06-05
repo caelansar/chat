@@ -29,3 +29,15 @@ impl AppConfig {
         Ok(ret?)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn load_config() {
+        let cfg = AppConfig::load().unwrap();
+
+        assert_eq!(6666, cfg.server.port);
+    }
+}
