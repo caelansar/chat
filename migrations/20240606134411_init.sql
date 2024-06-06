@@ -1,3 +1,4 @@
+-- Add migration script here
 -- this file is used for postgresql database initialization
 -- create user table
 CREATE TABLE IF NOT EXISTS users(
@@ -39,7 +40,7 @@ CREATE TABLE IF NOT EXISTS messages(
   images text[],
   created_at timestamp DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (chat_id) REFERENCES chats(id),
-  FOREIGN KEY (sender_id) REFERENCES users(id),
+  FOREIGN KEY (sender_id) REFERENCES users(id)
 );
 
 -- create index for messages for chat_id and created_at order by created_at desc
