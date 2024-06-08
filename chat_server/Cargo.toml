@@ -17,6 +17,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+jwt-simple = { version = "0.12.9" }
 
 [dev-dependencies]
 sqlx-db-tester = "0.4.0"

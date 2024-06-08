@@ -7,6 +7,14 @@ use sqlx::PgPool;
 use std::mem;
 
 impl User {
+    pub fn new(id: i64, fullname: &str, email: &str) -> Self {
+        Self {
+            id,
+            fullname: fullname.to_string(),
+            email: email.to_string(),
+            ..Default::default()
+        }
+    }
     /// Find a user by email
     pub async fn find_by_email(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
         let user =
