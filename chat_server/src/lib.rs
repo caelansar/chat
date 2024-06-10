@@ -1,11 +1,13 @@
 mod config;
 mod error;
 mod handlers;
+mod middlewares;
 mod models;
 mod utils;
 
 use anyhow::Context;
 pub use error::AppError;
+use middlewares::set_layer;
 pub use models::User;
 
 use handlers::*;
@@ -49,10 +51,12 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
         )
         .route("/chat/:id/messages", get(list_message_handler));
 
-    Ok(Router::new()
+    let router = Router::new()
         .route("/", get(index_handler))
         .nest("/api", api)
-        .with_state(state))
+        .with_state(state);
+
+    Ok(set_layer(router))
 }
 
 impl Deref for AppState {
