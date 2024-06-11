@@ -26,7 +26,7 @@ pub enum AppError {
     PasswordHashError(#[from] argon2::password_hash::Error),
 
     #[error("jwt error: {0}")]
-    JwtError(#[from] jwt_simple::Error),
+    JwtError(#[from] anyhow::Error),
 
     #[error("email already exists: {0}")]
     EmailAlreadyExists(String),
