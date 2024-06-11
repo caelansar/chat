@@ -1,3 +1,4 @@
+mod auth;
 mod request_id;
 mod server_time;
 
@@ -10,6 +11,8 @@ use tower_http::{
     LatencyUnit,
 };
 use tracing::Level;
+
+pub use auth::verify_token;
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 const SERVER_TIME_HEADER: &str = "x-server-time";

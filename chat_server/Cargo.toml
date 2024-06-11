@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = { workspace = true }
 argon2 = { version = "0.5.3", features = ["std"] }
 axum = { workspace = true }
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
