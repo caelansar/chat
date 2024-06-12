@@ -26,7 +26,7 @@ pub enum AppError {
     PasswordHashError(#[from] argon2::password_hash::Error),
 
     #[error("jwt error: {0}")]
-    JwtError(#[from] anyhow::Error),
+    AnyhowError(#[from] anyhow::Error),
 
     #[error("email already exists: {0}")]
     EmailAlreadyExists(String),
@@ -37,7 +37,7 @@ impl IntoResponse for AppError {
         let status = match &self {
             Self::SqlxError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::PasswordHashError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::JwtError(_) => StatusCode::FORBIDDEN,
+            Self::AnyhowError(_) => StatusCode::FORBIDDEN,
             Self::EmailAlreadyExists(_) => StatusCode::CONFLICT,
         };
 
