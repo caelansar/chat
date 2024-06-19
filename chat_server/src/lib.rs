@@ -89,27 +89,38 @@ impl AppState {
 }
 
 #[cfg(test)]
-impl AppState {
-    pub async fn new_for_test(
-        config: AppConfig,
-    ) -> Result<(sqlx_db_tester::TestPg, Self), AppError> {
-        use sqlx_db_tester::TestPg;
-        let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
-        let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
-        let server_url = config.server.db_url.rsplit_once('/').unwrap().0;
-        let tdb = TestPg::new(
-            server_url.to_string(),
-            std::path::Path::new("../migrations"),
-        );
-        let pool = tdb.get_pool().await;
-        let state = Self {
-            inner: Arc::new(AppStateInner {
-                config,
-                ek,
-                dk,
-                pool,
-            }),
+mod test_util {
+    use super::*;
+    use sqlx::PgPool;
+    use sqlx_db_tester::TestPg;
+
+    impl AppState {
+        pub async fn new_for_test() -> Result<(TestPg, Self), AppError> {
+            let config = AppConfig::load()?;
+            let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
+            let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
+            let server_url = config.server.db_url.rsplit_once('/').unwrap().0;
+            let (tdb, pool) = get_test_pool(Some(server_url)).await;
+            let state = Self {
+                inner: Arc::new(AppStateInner {
+                    config,
+                    ek,
+                    dk,
+                    pool,
+                }),
+            };
+            Ok((tdb, state))
+        }
+    }
+
+    pub async fn get_test_pool(url: Option<&str>) -> (TestPg, PgPool) {
+        let url = match url {
+            Some(url) => url.to_string(),
+            None => "postgres://postgres:postgres@localhost:5432".to_string(),
         };
-        Ok((tdb, state))
+        let tdb = TestPg::new(url, std::path::Path::new("../migrations"));
+        let pool = tdb.get_pool().await;
+
+        (tdb, pool)
     }
 }
