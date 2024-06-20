@@ -15,6 +15,7 @@ use sqlx::PgPool;
 use std::{ops::Deref, sync::Arc};
 use utils::{DecodingKey, EncodingKey};
 
+use axum::http::StatusCode;
 use axum::{
     middleware::from_fn_with_state,
     routing::{get, patch, post},
@@ -58,7 +59,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
         .nest("/api", api)
         .with_state(state);
 
-    Ok(set_layer(router))
+    Ok(set_layer(router).fallback(|| async { (StatusCode::NOT_FOUND, "no man's land") }))
 }
 
 impl Deref for AppState {
@@ -114,10 +115,10 @@ mod test_util {
     }
 
     pub async fn get_test_pool(url: Option<&str>) -> (TestPg, PgPool) {
-        let url = match url {
-            Some(url) => url.to_string(),
-            None => "postgres://postgres:postgres@localhost:5432".to_string(),
-        };
+        let url = url
+            .map(|x| x.to_string())
+            .unwrap_or("postgres://postgres:postgres@localhost:5432".to_string());
+
         let tdb = TestPg::new(url, std::path::Path::new("../migrations"));
         let pool = tdb.get_pool().await;
 
