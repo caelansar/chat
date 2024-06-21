@@ -24,15 +24,6 @@ pub struct SigninUser {
 }
 
 impl User {
-    #[cfg(test)]
-    pub fn new(id: i64, fullname: &str, email: &str) -> Self {
-        Self {
-            id,
-            fullname: fullname.to_string(),
-            email: email.to_string(),
-            ..Default::default()
-        }
-    }
     /// Find a user by email
     pub async fn find_by_email(email: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
         let user = sqlx::query_as(
@@ -46,12 +37,14 @@ impl User {
 
     /// Create a new user
     pub async fn create(input: &CreateUser, pool: &PgPool) -> Result<Self, AppError> {
-        let password_hash = hash_password(&input.password)?;
         // check if email exists
         let user = Self::find_by_email(&input.email, pool).await?;
         if user.is_some() {
             return Err(AppError::EmailAlreadyExists(input.email.clone()));
         }
+
+        // generate password hash if user email doesn't exist
+        let password_hash = hash_password(&input.password)?;
 
         // check if workspace exists, if not create one
         let ws = match Workspace::find_by_name(&input.workspace, pool).await? {
@@ -59,7 +52,7 @@ impl User {
             None => Workspace::create(&input.workspace, 0, pool).await?,
         };
 
-        let user = sqlx::query_as(
+        let user: User = sqlx::query_as(
             r#"
             INSERT INTO users (ws_id, email, fullname, password_hash)
             VALUES ($1, $2, $3, $4)
@@ -72,6 +65,11 @@ impl User {
         .bind(password_hash)
         .fetch_one(pool)
         .await?;
+
+        if ws.owner_id == 0 {
+            ws.update_owner(user.id as _, pool).await?;
+        }
+
         Ok(user)
     }
 
@@ -123,6 +121,18 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
         .is_ok();
 
     Ok(is_valid)
+}
+
+#[cfg(test)]
+impl User {
+    pub fn new(id: i64, fullname: &str, email: &str) -> Self {
+        Self {
+            id,
+            fullname: fullname.to_string(),
+            email: email.to_string(),
+            ..Default::default()
+        }
+    }
 }
 
 #[cfg(test)]
