@@ -12,6 +12,7 @@ pub use models::User;
 
 use handlers::*;
 use sqlx::PgPool;
+use std::time::Duration;
 use std::{ops::Deref, sync::Arc};
 use utils::{DecodingKey, EncodingKey};
 
@@ -21,6 +22,7 @@ use axum::{
     routing::{get, patch, post},
     Router,
 };
+use sqlx::pool::PoolOptions;
 
 pub use config::AppConfig;
 pub use error::ErrorOutput;
@@ -74,7 +76,12 @@ impl AppState {
     pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
         let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
         let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
-        let pool = PgPool::connect(&config.server.db_url)
+
+        let pool = PoolOptions::new();
+        let pool = pool.acquire_timeout(Duration::from_secs(5));
+
+        let pool = pool
+            .connect(&config.server.db_url)
             .await
             .context("connect to db failed")?;
 
