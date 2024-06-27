@@ -4,9 +4,11 @@ mod server_time;
 
 use self::{request_id::set_request_id, server_time::ServerTimeLayer};
 use axum::{middleware::from_fn, Router};
+use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer,
+    timeout::TimeoutLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
@@ -34,4 +36,10 @@ pub fn set_layer(app: Router) -> Router {
             .layer(from_fn(set_request_id))
             .layer(ServerTimeLayer),
     )
+    .layer((
+        TraceLayer::new_for_http(),
+        // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
+        // requests don't hang forever.
+        TimeoutLayer::new(Duration::from_secs(10)),
+    ))
 }

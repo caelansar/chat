@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chat_server::{get_router, AppConfig};
 use tokio::net::TcpListener;
+use tokio::signal;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
 
@@ -16,7 +17,33 @@ async fn main() -> Result<()> {
     let listener = TcpListener::bind(&addr).await?;
     info!("Listening on: {}", addr);
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }
