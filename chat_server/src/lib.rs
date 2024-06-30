@@ -99,7 +99,7 @@ impl AppState {
 #[cfg(test)]
 mod test_util {
     use super::*;
-    use sqlx::PgPool;
+    use sqlx::{Executor, PgPool};
     use sqlx_db_tester::TestPg;
 
     impl AppState {
@@ -128,6 +128,16 @@ mod test_util {
 
         let tdb = TestPg::new(url, std::path::Path::new("../migrations"));
         let pool = tdb.get_pool().await;
+
+        let sql = include_str!("../asserts/test.sql").split(';');
+        let mut ts = pool.begin().await.expect("begin transaction failed");
+        for s in sql {
+            if s.trim().is_empty() {
+                continue;
+            }
+            ts.execute(s).await.expect("execute sql failed");
+        }
+        ts.commit().await.expect("commit transaction failed");
 
         (tdb, pool)
     }

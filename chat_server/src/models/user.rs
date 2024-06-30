@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::mem;
 
-use super::Workspace;
+use super::{ChatUser, Workspace};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateUser {
@@ -97,6 +97,37 @@ impl User {
     }
 }
 
+#[allow(dead_code)]
+impl ChatUser {
+    pub async fn fetch_by_ids(ids: &[i64], pool: &PgPool) -> Result<Vec<Self>, AppError> {
+        let users = sqlx::query_as(
+            r#"
+        SELECT id, fullname, email
+        FROM users
+        WHERE id = ANY($1)
+        "#,
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(users)
+    }
+
+    pub async fn fetch_all(ws_id: u64, pool: &PgPool) -> Result<Vec<Self>, AppError> {
+        let users = sqlx::query_as(
+            r#"
+        SELECT id, fullname, email
+        FROM users
+        WHERE ws_id = $1
+        "#,
+        )
+        .bind(ws_id as i64)
+        .fetch_all(pool)
+        .await?;
+        Ok(users)
+    }
+}
+
 fn hash_password(password: &str) -> Result<String, AppError> {
     let salt = SaltString::generate(&mut OsRng);
 
@@ -169,6 +200,21 @@ mod tests {
         let password_hash = hash_password(password)?;
         assert_eq!(password_hash.len(), 97);
         assert!(verify_password(password, &password_hash)?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_duplicate_user_should_fail() -> Result<()> {
+        let (_tdb, pool) = get_test_pool(None).await;
+
+        let input = CreateUser::new("cae", "Cae Chen", "cae@cae.org", "123456");
+        let ret = User::create(&input, &pool).await;
+        match ret {
+            Err(AppError::EmailAlreadyExists(email)) => {
+                assert_eq!(email, input.email);
+            }
+            _ => panic!("Expecting EmailAlreadyExists error"),
+        }
         Ok(())
     }
 

@@ -77,11 +77,8 @@ mod tests {
     #[tokio::test]
     async fn signin_should_work() -> Result<()> {
         let (_tdb, state) = AppState::new_for_test().await?;
-        let name = "Alice";
         let email = "alice@cae.org";
         let password = "123456";
-        let user = CreateUser::new("none", name, email, password);
-        User::create(&user, &state.pool).await?;
         let input = SigninUser::new(email, password);
         let ret = signin_handler(State(state), Json(input))
             .await?
@@ -97,7 +94,7 @@ mod tests {
     #[tokio::test]
     async fn signin_with_non_exist_user_should_403() -> Result<()> {
         let (_tdb, state) = AppState::new_for_test().await?;
-        let email = "alice@cae.org";
+        let email = "cae1@cae.org";
         let password = "123456";
         let input = SigninUser::new(email, password);
         let ret = signin_handler(State(state), Json(input))

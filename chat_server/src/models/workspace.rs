@@ -119,10 +119,9 @@ mod tests {
     async fn workspace_should_find_by_name() -> Result<()> {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let _ws = Workspace::create("test", 0, &pool).await?;
-        let ws = Workspace::find_by_name("test", &pool).await?;
+        let ws = Workspace::find_by_name("cae", &pool).await?;
 
-        assert_eq!(ws.unwrap().name, "test");
+        assert_eq!(ws.unwrap().name, "cae");
         Ok(())
     }
 
@@ -130,16 +129,8 @@ mod tests {
     async fn workspace_should_fetch_all_chat_users() -> Result<()> {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let ws = Workspace::create("test", 0, &pool).await?;
-        let input = CreateUser::new(&ws.name, "Tyr Chen", "tchen@acme.org", "Hunter42");
-        let user1 = User::create(&input, &pool).await?;
-        let input = CreateUser::new(&ws.name, "Alice Wang", "alice@acme.org", "Hunter42");
-        let user2 = User::create(&input, &pool).await?;
-
-        let users = Workspace::fetch_all_chat_users(ws.id as _, &pool).await?;
-        assert_eq!(users.len(), 2);
-        assert_eq!(users[0].id, user1.id);
-        assert_eq!(users[1].id, user2.id);
+        let users = Workspace::fetch_all_chat_users(1, &pool).await?;
+        assert_eq!(users.len(), 5);
 
         Ok(())
     }
