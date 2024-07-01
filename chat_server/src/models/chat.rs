@@ -11,6 +11,11 @@ pub struct CreateChat {
     pub public: bool,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+struct DeletedRow {
+    id: i64,
+}
+
 #[allow(dead_code)]
 impl Chat {
     pub async fn create(input: CreateChat, ws_id: u64, pool: &PgPool) -> Result<Self, AppError> {
@@ -91,6 +96,22 @@ impl Chat {
         .await?;
 
         Ok(chat)
+    }
+
+    pub async fn delete_by_id(id: u64, pool: &PgPool) -> Result<i64, AppError> {
+        let res: DeletedRow = sqlx::query_as(
+            r#"
+            DELETE
+            FROM chats
+            WHERE id = $1
+            RETURNING id
+            "#,
+        )
+        .bind(id as i64)
+        .fetch_one(pool)
+        .await?;
+
+        Ok(res.id)
     }
 }
 
@@ -174,5 +195,14 @@ mod tests {
             .expect("fetch all chats failed");
 
         assert_eq!(chats.len(), 4);
+    }
+
+    #[tokio::test]
+    async fn chat_delete_should_work() {
+        let (_tdb, pool) = get_test_pool(None).await;
+
+        let id = Chat::delete_by_id(1, &pool).await.unwrap();
+
+        assert_eq!(id, 1);
     }
 }
