@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use std::io;
 use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,6 +22,9 @@ impl ErrorOutput {
 pub enum AppError {
     #[error("sql error: {0}")]
     SqlxError(#[from] sqlx::Error),
+
+    #[error("io error: {0}")]
+    IoError(#[from] io::Error),
 
     #[error("create chat error: {0}")]
     CreateChatError(String),
@@ -47,6 +51,7 @@ impl IntoResponse for AppError {
             Self::EmailAlreadyExists(_) => StatusCode::CONFLICT,
             Self::CreateChatError(_) => StatusCode::BAD_REQUEST,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         (status, Json(ErrorOutput::new(self.to_string()))).into_response()
