@@ -1,6 +1,7 @@
-use crate::models::ChatFile;
+use crate::models::{ChatFile, CreateMessage, ListMessages};
 use crate::{AppError, AppState, User};
 use axum::body::Body;
+use axum::extract::Query;
 use axum::{
     extract::{Multipart, Path, State},
     http::HeaderMap,
@@ -11,14 +12,28 @@ use tokio::fs;
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
 
-pub(crate) async fn send_message_handler() -> impl IntoResponse {
-    "send message"
+pub(crate) async fn send_message_handler(
+    Extension(user): Extension<User>,
+    State(state): State<AppState>,
+    Path(id): Path<u64>,
+    Json(input): Json<CreateMessage>,
+) -> Result<impl IntoResponse, AppError> {
+    let msg = state
+        .message
+        .create_message(&state.pool, input, id, user.id as _)
+        .await?;
+
+    Ok(Json(msg))
 }
 
-pub(crate) async fn list_message_handler() -> impl IntoResponse {
-    "list message"
+pub(crate) async fn list_message_handler(
+    State(state): State<AppState>,
+    Path(id): Path<u64>,
+    Query(input): Query<ListMessages>,
+) -> Result<impl IntoResponse, AppError> {
+    let messages = state.message.list_messages(&state.pool, input, id).await?;
+    Ok(Json(messages))
 }
-
 pub(crate) async fn file_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
@@ -61,7 +76,7 @@ pub(crate) async fn upload_handler(
             continue;
         };
 
-        let file = ChatFile::new(&filename, &data);
+        let file = ChatFile::new(ws_id, &filename, &data);
         let path = file.path(&base_dir);
         if path.exists() {
             info!("File {} already exists: {:?}", filename, path);
@@ -69,7 +84,7 @@ pub(crate) async fn upload_handler(
             fs::create_dir_all(path.parent().expect("file path parent should exists")).await?;
             fs::write(path, data).await?;
         }
-        files.push(file.url(ws_id));
+        files.push(file.url());
     }
 
     Ok(Json(files))

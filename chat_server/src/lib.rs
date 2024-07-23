@@ -25,8 +25,7 @@ use sqlx::pool::PoolOptions;
 pub use config::AppConfig;
 pub use error::AppError;
 pub use error::ErrorOutput;
-pub use models::Chat;
-pub use models::User;
+pub use models::{Chat, MessageRepo, User};
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -39,6 +38,7 @@ pub(crate) struct AppStateInner {
     pub(crate) dk: DecodingKey,
     pub(crate) ek: EncodingKey,
     pub(crate) pool: PgPool,
+    pub(crate) message: MessageRepo,
 }
 
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
@@ -89,12 +89,15 @@ impl AppState {
             .await
             .context("connect to db failed")?;
 
+        let base_dir = config.server.base_dir.clone();
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 ek,
                 dk,
                 pool,
+                message: MessageRepo::new(base_dir),
             }),
         })
     }
@@ -113,12 +116,16 @@ mod test_util {
             let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
             let server_url = config.server.db_url.rsplit_once('/').unwrap().0;
             let (tdb, pool) = get_test_pool(Some(server_url)).await;
+
+            let base_dir = config.server.base_dir.clone();
+
             let state = Self {
                 inner: Arc::new(AppStateInner {
                     config,
                     ek,
                     dk,
                     pool,
+                    message: MessageRepo::new(base_dir),
                 }),
             };
             Ok((tdb, state))
@@ -133,6 +140,7 @@ mod test_util {
         let tdb = TestPg::new(url, std::path::Path::new("../migrations"));
         let pool = tdb.get_pool().await;
 
+        // insert test records
         let sql = include_str!("../asserts/test.sql").split(';');
         let mut ts = pool.begin().await.expect("begin transaction failed");
         for s in sql {

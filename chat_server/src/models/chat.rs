@@ -201,8 +201,8 @@ mod tests {
     async fn chat_delete_should_work() {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let id = Chat::delete_by_id(1, &pool).await.unwrap();
+        let id = Chat::delete_by_id(2, &pool).await.unwrap();
 
-        assert_eq!(id, 1);
+        assert_eq!(id, 2);
     }
 }
