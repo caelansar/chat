@@ -1,6 +1,7 @@
+use crate::models::UserRepo;
 use crate::{
     models::{CreateUser, SigninUser},
-    AppError, AppState, ErrorOutput, User,
+    AppError, AppState, ErrorOutput,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
@@ -14,7 +15,7 @@ pub(crate) async fn signup_handler(
     State(state): State<AppState>,
     Json(input): Json<CreateUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::create(&input, &state.pool).await?;
+    let user = UserRepo::create(&input, &state.pool).await?;
     let token = state.ek.sign(user)?;
     let body = Json(AuthOutput { token });
     Ok((StatusCode::CREATED, body))
@@ -24,7 +25,7 @@ pub(crate) async fn signin_handler(
     State(state): State<AppState>,
     Json(input): Json<SigninUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user = User::verify(&input, &state.pool).await?;
+    let user = UserRepo::verify(&input, &state.pool).await?;
 
     match user {
         Some(user) => {

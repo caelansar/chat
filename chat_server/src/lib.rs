@@ -1,18 +1,14 @@
 mod config;
 mod error;
 mod handlers;
-mod middlewares;
 mod models;
-mod utils;
 
 use anyhow::Context;
-use middlewares::{set_layer, verify_token};
 
 use handlers::*;
 use sqlx::PgPool;
 use std::time::Duration;
 use std::{ops::Deref, sync::Arc};
-use utils::{DecodingKey, EncodingKey};
 
 use axum::http::StatusCode;
 use axum::{
@@ -20,12 +16,13 @@ use axum::{
     routing::{get, patch, post},
     Router,
 };
-use sqlx::pool::PoolOptions;
-
+use chat_core::middlewares::{set_layer, verify_token, TokenVerify};
+use chat_core::{DecodingKey, EncodingKey, User};
 pub use config::AppConfig;
 pub use error::AppError;
 pub use error::ErrorOutput;
-pub use models::{Chat, MessageRepo, User};
+pub use models::MessageRepo;
+use sqlx::pool::PoolOptions;
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -39,6 +36,14 @@ pub(crate) struct AppStateInner {
     pub(crate) ek: EncodingKey,
     pub(crate) pool: PgPool,
     pub(crate) message: MessageRepo,
+}
+
+impl TokenVerify for AppState {
+    type Error = AppError;
+
+    fn verify(&self, token: &str) -> Result<User, Self::Error> {
+        self.dk.verify(token).map_err(AppError::AnyhowError)
+    }
 }
 
 pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
@@ -56,7 +61,7 @@ pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
         .route("/chats/:id/messages", get(list_message_handler))
         .route("/upload", post(upload_handler))
         .route("/files/:ws_id/*path", get(file_handler))
-        .layer(from_fn_with_state(state.clone(), verify_token))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
         .route("/signin", post(signin_handler))
         .route("/signup", post(signup_handler));
 

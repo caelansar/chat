@@ -9,8 +9,8 @@ edition = "2021"
 anyhow = { workspace = true }
 argon2 = { version = "0.5.3", features = ["std"] }
 axum = { workspace = true }
-axum-extra = { version = "0.9.3", features = ["typed-header"] }
 chrono = { version = "0.4.38", features = ["serde"] }
+chat-core = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 sqlx = { workspace = true }
@@ -18,10 +18,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["signal"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-jwt-simple = { version = "0.12.9" }
 serde_json = "1.0.117"
-tower = "0.4.13"
-tower-http = { version = "0.5.2", features = ["compression-full", "trace", "timeout"] }
 uuid = { version = "1.8.0", features = ["v7", "serde"] }
 mime_guess = "2.0.5"
 sha1 = "0.10.6"

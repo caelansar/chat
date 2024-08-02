@@ -1,11 +1,11 @@
+use crate::AppError;
+use chat_core::{ChatUser, Workspace};
 use sqlx::PgPool;
 
-use crate::AppError;
+pub struct WorkspaceRepo;
 
-use super::{ChatUser, Workspace};
-
-impl Workspace {
-    pub async fn create(name: &str, user_id: u64, pool: &PgPool) -> Result<Self, AppError> {
+impl WorkspaceRepo {
+    pub async fn create(name: &str, user_id: u64, pool: &PgPool) -> Result<Workspace, AppError> {
         let ws = sqlx::query_as(
             r#"
         INSERT INTO workspaces (name, owner_id)
@@ -22,7 +22,11 @@ impl Workspace {
     }
 
     #[allow(dead_code)]
-    pub async fn update_owner(&self, owner_id: u64, pool: &PgPool) -> Result<Self, AppError> {
+    pub async fn update_owner(
+        ws_id: i64,
+        owner_id: u64,
+        pool: &PgPool,
+    ) -> Result<Workspace, AppError> {
         // update owner_id in two cases 1) owner_id = 0 2) owner's ws_id = id
         let ws = sqlx::query_as(
             r#"
@@ -33,14 +37,14 @@ impl Workspace {
         "#,
         )
         .bind(owner_id as i64)
-        .bind(self.id)
+        .bind(ws_id)
         .fetch_one(pool)
         .await?;
 
         Ok(ws)
     }
 
-    pub async fn find_by_name(name: &str, pool: &PgPool) -> Result<Option<Self>, AppError> {
+    pub async fn find_by_name(name: &str, pool: &PgPool) -> Result<Option<Workspace>, AppError> {
         let ws = sqlx::query_as(
             r#"
         SELECT id, name, owner_id, created_at
@@ -56,7 +60,7 @@ impl Workspace {
     }
 
     #[allow(dead_code)]
-    pub async fn find_by_id(id: u64, pool: &PgPool) -> Result<Option<Self>, AppError> {
+    pub async fn find_by_id(id: u64, pool: &PgPool) -> Result<Option<Workspace>, AppError> {
         let ws = sqlx::query_as(
             r#"
         SELECT id, name, owner_id, created_at
@@ -90,9 +94,9 @@ impl Workspace {
 
 #[cfg(test)]
 mod tests {
-    use crate::{models::CreateUser, User};
-
     use super::*;
+    use crate::models::user::UserRepo;
+    use crate::models::CreateUser;
     use crate::test_util::get_test_pool;
     use anyhow::{Ok, Result};
 
@@ -100,16 +104,20 @@ mod tests {
     async fn workspace_should_create_and_set_owner() -> Result<()> {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let ws = Workspace::create("test", 0, &pool).await.unwrap();
+        let ws = WorkspaceRepo::create("test", 0, &pool).await.unwrap();
 
-        let input = CreateUser::new(&ws.name, "Tyr Chen", "tchen@acme.org", "Hunter42");
-        let user = User::create(&input, &pool).await.unwrap();
+        let input = CreateUser::new(&ws.name, "Cae Chen", "cae.chen@cae.com", "123456");
+        let user = UserRepo::create(&input, &pool).await.unwrap();
+
+        assert_eq!(user.fullname, "Cae Chen");
+        assert_eq!(user.email, "cae.chen@cae.com");
 
         assert_eq!(ws.name, "test");
-
         assert_eq!(user.ws_id, ws.id);
 
-        let ws = ws.update_owner(user.id as _, &pool).await.unwrap();
+        let ws = WorkspaceRepo::update_owner(ws.id, user.id as _, &pool)
+            .await
+            .unwrap();
 
         assert_eq!(ws.owner_id, user.id);
         Ok(())
@@ -119,7 +127,7 @@ mod tests {
     async fn workspace_should_find_by_name() -> Result<()> {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let ws = Workspace::find_by_name("cae", &pool).await?;
+        let ws = WorkspaceRepo::find_by_name("cae", &pool).await?;
 
         assert_eq!(ws.unwrap().name, "cae");
         Ok(())
@@ -129,7 +137,7 @@ mod tests {
     async fn workspace_should_fetch_all_chat_users() -> Result<()> {
         let (_tdb, pool) = get_test_pool(None).await;
 
-        let users = Workspace::fetch_all_chat_users(1, &pool).await?;
+        let users = WorkspaceRepo::fetch_all_chat_users(1, &pool).await?;
         assert_eq!(users.len(), 5);
 
         Ok(())

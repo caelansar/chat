@@ -14,7 +14,7 @@ use tower_http::{
 };
 use tracing::Level;
 
-pub use auth::verify_token;
+pub use auth::{verify_token, TokenVerify};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 const SERVER_TIME_HEADER: &str = "x-server-time";

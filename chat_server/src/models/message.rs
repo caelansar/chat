@@ -1,5 +1,6 @@
-use crate::models::{ChatFile, Message};
+use crate::models::ChatFile;
 use crate::AppError;
+use chat_core::Message;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::path::PathBuf;
