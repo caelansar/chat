@@ -1512,6 +1512,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-extra",
+ "chat-core",
  "futures",
  "serde",
  "serde_yaml",
