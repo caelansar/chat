@@ -10,7 +10,9 @@ anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
 chat-core = { workspace = true }
+dashmap = "6.0.1"
 futures = "0.3.30"
+jwt-simple = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 sqlx = { workspace = true }
