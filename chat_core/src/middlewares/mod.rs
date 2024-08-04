@@ -1,4 +1,5 @@
 mod auth;
+mod log_headers;
 mod request_id;
 mod server_time;
 
@@ -14,6 +15,7 @@ use tower_http::{
 };
 use tracing::Level;
 
+pub use self::log_headers::log_headers;
 pub use auth::{verify_token, TokenVerify};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";

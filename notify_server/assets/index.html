@@ -4,6 +4,7 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <html>
+  <script src=eventsource-polyfill.js></script>
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -20,7 +21,7 @@
     <h1>Server-Side Events</h1>
 
     <script lang="javascript">
-      var source = new EventSource("/events");
+      var source = new EventSourcePolyfill("http://localhost:8888/events", {headers: {'Authorization': 'Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MjI3NjEzMDcsImV4cCI6MTcyMzM2NjEwNywibmJmIjoxNzIyNzYxMzA3LCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjEsIndzX2lkIjoxLCJmdWxsbmFtZSI6ImNhZSIsImVtYWlsIjoiY2FlQGNhZS5jb20iLCJjcmVhdGVkX2F0IjoiMjAyNC0wOC0wNFQwODo0Nzo0My45MjYyMTRaIn0.cwA24YDkBitPNlZbNayad-IhYpXsmfXi1uB_iFeA1V7jsCRz0Xq2X3NaOysSNQOoye3B6wAC_K4IaGT3PkerDg'}});
       source.onmessage = function(event) {
         console.log("Got:", event.data);
       };

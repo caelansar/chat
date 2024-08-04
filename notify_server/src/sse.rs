@@ -1,14 +1,21 @@
 use axum::response::{sse::Event, Sse};
+use axum::Extension;
 use axum_extra::{headers, TypedHeader};
+use chat_core::User;
 use futures::{stream, Stream};
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::StreamExt;
 use tracing::info;
 
 pub(crate) async fn sse_handler(
+    Extension(user): Extension<User>,
     TypedHeader(user_agent): TypedHeader<headers::UserAgent>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    info!("`{}` connected", user_agent.as_str());
+    info!(
+        "`user: {} user agent: {}` connected",
+        user.id,
+        user_agent.as_str()
+    );
 
     // A `Stream` that repeats an event every second
     //

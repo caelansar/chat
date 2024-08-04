@@ -36,6 +36,7 @@ pub struct ChatUser {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "chat_type", rename_all = "snake_case")]
 pub enum ChatType {
     Single,
@@ -49,6 +50,7 @@ pub struct Chat {
     pub id: i64,
     pub ws_id: i64,
     pub name: Option<String>,
+    #[serde(rename = "chat_type")]
     pub r#type: ChatType,
     pub members: Vec<i64>,
     pub created_at: DateTime<Utc>,

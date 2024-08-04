@@ -1,5 +1,5 @@
 server:
-  port: 6667
+  port: 8888
   db_url: postgres://postgres:postgres@localhost:5432/chat
 auth:
   pk: |
