@@ -1,9 +1,11 @@
 mod config;
 mod error;
-mod sse;
+mod handler;
+mod notify;
 
 pub use crate::config::AppConfig;
 use crate::error::AppError;
+use crate::notify::{AppEvent, Notification};
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::{
     response::{Html, IntoResponse},
@@ -11,17 +13,16 @@ use axum::{
     Router,
 };
 use chat_core::middlewares::{log_headers, verify_token, TokenVerify};
-use chat_core::{Chat, DecodingKey, Message, User};
+use chat_core::{DecodingKey, User};
 use dashmap::DashMap;
 use futures::StreamExt;
-use serde::Deserialize;
+use handler::sse_handler;
 use sqlx::postgres::PgListener;
-use sse::sse_handler;
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
-use tracing::info;
+use tracing::{info, warn};
 
 const INDEX_HTML: &str = include_str!("../assets/index.html");
 
@@ -32,23 +33,11 @@ pub struct AppState(Arc<AppStateInner>);
 
 pub struct AppStateInner {
     pub config: AppConfig,
-    #[allow(unused)]
     users: UserMap,
     dk: DecodingKey,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
-#[serde(tag = "type")]
-pub enum AppEvent {
-    NewChat(Chat),
-    AddToChat(Chat),
-    RemoveFromChat(Chat),
-    NewMessage(Message),
-}
-
-pub fn get_router(config: AppConfig) -> Router {
-    let state = AppState::new(config);
-
+pub fn get_router(state: AppState) -> Router {
     Router::new()
         .route("/events", get(sse_handler))
         .layer(from_fn(log_headers))
@@ -58,8 +47,8 @@ pub fn get_router(config: AppConfig) -> Router {
         .with_state(state.clone())
 }
 
-pub async fn setup_pg_listener(config: AppConfig) -> anyhow::Result<()> {
-    let mut listener = PgListener::connect(&config.server.db_url).await?;
+pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
+    let mut listener = PgListener::connect(&state.config.server.db_url).await?;
     listener.listen("chat_updated").await?;
     listener.listen("chat_message_created").await?;
 
@@ -68,6 +57,25 @@ pub async fn setup_pg_listener(config: AppConfig) -> anyhow::Result<()> {
     tokio::spawn(async move {
         while let Some(Ok(notification)) = stream.next().await {
             info!("Received notification: {:?}", notification);
+            match Notification::load(notification.channel(), notification.payload()) {
+                Ok(notification) => {
+                    info!("user_ids: {:?}", notification.user_ids);
+                    for user_id in notification.user_ids {
+                        if let Some(tx) = state.users.get(&(user_id as u64)) {
+                            info!("sending notification to user: {}", user_id);
+                            if let Err(err) = tx.send(notification.event.clone()) {
+                                warn!(
+                                    "failed to send notification to user: {}, err: {:?}",
+                                    user_id, err
+                                );
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("failed to load notification: {:?}", e);
+                }
+            }
         }
     });
 
@@ -110,20 +118,23 @@ mod tests {
 
     #[test]
     fn test_deserialize_app_event() {
-        let data = r#"{"type": "NewChat", "id": 1, "ws_id": 1, "name": "chat1", "chat_type": "single", "members": [1,2,3], "created_at": "2024-08-04T06:05:31+00:00"}"#;
-
-        let event: AppEvent = serde_json::from_str(data).unwrap();
+        let event = AppEvent::NewChat(Chat {
+            id: 1,
+            ws_id: 1,
+            name: Some("chat1".to_string()),
+            r#type: ChatType::Single,
+            members: vec![1, 2, 3],
+            created_at: DateTime::from_timestamp(1722751531, 0).unwrap(),
+        });
+        let data = serde_json::to_string(&event).unwrap();
 
         assert_eq!(
-            AppEvent::NewChat(Chat {
-                id: 1,
-                ws_id: 1,
-                name: Some("chat1".to_string()),
-                r#type: ChatType::Single,
-                members: vec![1, 2, 3],
-                created_at: DateTime::from_timestamp(1722751531, 0).unwrap(),
-            }),
-            event
+            r#"{"event":"NewChat","id":1,"ws_id":1,"name":"chat1","type":"single","members":[1,2,3],"created_at":"2024-08-04T06:05:31Z"}"#,
+            data
         );
+
+        let event1: AppEvent = serde_json::from_str(&data).unwrap();
+
+        assert_eq!(event, event1);
     }
 }

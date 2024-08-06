@@ -22,6 +22,7 @@ pub struct ChatRepo;
 #[allow(dead_code)]
 impl ChatRepo {
     pub async fn create(input: CreateChat, ws_id: u64, pool: &PgPool) -> Result<Chat, AppError> {
+        // FIXME: deduplicate members
         let len = input.members.len();
         if len < 2 {
             return Err(AppError::CreateChatError(

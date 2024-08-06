@@ -4,7 +4,7 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <html>
-  <script src=eventsource-polyfill.js></script>
+  <script src=/assets/eventsource-polyfill.js></script>
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -21,10 +21,25 @@
     <h1>Server-Side Events</h1>
 
     <script lang="javascript">
-      var source = new EventSourcePolyfill("http://localhost:8888/events", {headers: {'Authorization': 'Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MjI3NjEzMDcsImV4cCI6MTcyMzM2NjEwNywibmJmIjoxNzIyNzYxMzA3LCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjEsIndzX2lkIjoxLCJmdWxsbmFtZSI6ImNhZSIsImVtYWlsIjoiY2FlQGNhZS5jb20iLCJjcmVhdGVkX2F0IjoiMjAyNC0wOC0wNFQwODo0Nzo0My45MjYyMTRaIn0.cwA24YDkBitPNlZbNayad-IhYpXsmfXi1uB_iFeA1V7jsCRz0Xq2X3NaOysSNQOoye3B6wAC_K4IaGT3PkerDg'}});
+      var source = new EventSourcePolyfill("http://localhost:8888/events", {headers: {'Authorization': 'Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MjI5MzUyMTksImV4cCI6MTcyMzU0MDAxOSwibmJmIjoxNzIyOTM1MjE5LCJpc3MiOiJjaGF0X3NlcnZlciIsImF1ZCI6ImNoYXRfd2ViIiwiaWQiOjEsIndzX2lkIjoxLCJmdWxsbmFtZSI6ImNhZSIsImVtYWlsIjoiY2FlQGNhZS5jb20iLCJjcmVhdGVkX2F0IjoiMjAyNC0wOC0wNlQwOTowNjo1OS40NzI3NzZaIn0.csxq1vX0_QZ5grNSXcVD2r0ikd5Ft6qG7lCsmye9qUdkbBSHGwUv2ZFkRS1V574T4S15J8P7b3IyehyRi4scDw'}});
       source.onmessage = function(event) {
         console.log("Got:", event.data);
       };
+      source.addEventListener("NewChat", function(event) {
+        console.log("NewChat:", event.data);
+      });
+
+      source.addEventListener("AddToChat", function(event) {
+        console.log("AddToChat:", event.data);
+      });
+
+      source.addEventListener("RemoveFromChat", function(event) {
+        console.log("RemoveFromChat:", event.data);
+      });
+
+      source.addEventListener("NewMessage", function(event) {
+        console.log("NewMessage:", event.data);
+      });
     </script>
   </body>
 </html>

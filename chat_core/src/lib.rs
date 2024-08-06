@@ -50,7 +50,6 @@ pub struct Chat {
     pub id: i64,
     pub ws_id: i64,
     pub name: Option<String>,
-    #[serde(rename = "chat_type")]
     pub r#type: ChatType,
     pub members: Vec<i64>,
     pub created_at: DateTime<Utc>,
