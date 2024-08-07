@@ -24,6 +24,7 @@ mime_guess = "2.0.5"
 sha1 = "0.10.6"
 hex = "0.4.3"
 tokio-util = "0.7.11"
+log = "0.4.21"
 
 [dev-dependencies]
 sqlx-db-tester = "0.4.0"

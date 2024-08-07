@@ -6,7 +6,7 @@ mod models;
 use anyhow::Context;
 
 use handlers::*;
-use sqlx::PgPool;
+use sqlx::{ConnectOptions, PgPool};
 use std::time::Duration;
 use std::{ops::Deref, sync::Arc};
 
@@ -23,6 +23,7 @@ pub use error::AppError;
 pub use error::ErrorOutput;
 pub use models::MessageRepo;
 use sqlx::pool::PoolOptions;
+use sqlx::postgres::PgConnectOptions;
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -86,11 +87,14 @@ impl AppState {
         let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
         let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
 
+        let opts: PgConnectOptions = config.server.db_url.parse()?;
+        let opts = opts.log_statements(log::LevelFilter::Info);
+
         let pool = PoolOptions::new();
         let pool = pool.acquire_timeout(Duration::from_secs(5));
 
         let pool = pool
-            .connect(&config.server.db_url)
+            .connect_with(opts)
             .await
             .context("connect to db failed")?;
 

@@ -460,6 +460,7 @@ dependencies = [
  "chrono",
  "hex",
  "http-body-util",
+ "log",
  "mime_guess",
  "serde",
  "serde_json",
