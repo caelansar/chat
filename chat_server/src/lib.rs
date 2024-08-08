@@ -26,12 +26,12 @@ use sqlx::pool::PoolOptions;
 use sqlx::postgres::PgConnectOptions;
 
 #[derive(Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     inner: Arc<AppStateInner>,
 }
 
 #[allow(unused)]
-pub(crate) struct AppStateInner {
+pub struct AppStateInner {
     pub(crate) config: AppConfig,
     pub(crate) dk: DecodingKey,
     pub(crate) ek: EncodingKey,
@@ -47,9 +47,7 @@ impl TokenVerify for AppState {
     }
 }
 
-pub async fn get_router(config: AppConfig) -> Result<Router, AppError> {
-    let state = AppState::try_new(config).await?;
-
+pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     let api = Router::new()
         .route("/chats", get(list_chat_handler).post(create_chat_handler))
         .route(
@@ -88,7 +86,7 @@ impl AppState {
         let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
 
         let opts: PgConnectOptions = config.server.db_url.parse()?;
-        let opts = opts.log_statements(log::LevelFilter::Info);
+        let opts = opts.log_statements(log::LevelFilter::Debug);
 
         let pool = PoolOptions::new();
         let pool = pool.acquire_timeout(Duration::from_secs(5));
@@ -112,7 +110,7 @@ impl AppState {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-util")]
 mod test_util {
     use super::*;
     use sqlx::{Executor, PgPool};

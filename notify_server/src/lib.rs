@@ -37,7 +37,9 @@ pub struct AppStateInner {
     dk: DecodingKey,
 }
 
-pub fn get_router(state: AppState) -> Router {
+pub async fn get_router(state: AppState) -> Router {
+    setup_pg_listener(state.clone()).await.unwrap();
+
     Router::new()
         .route("/events", get(sse_handler))
         .layer(from_fn(log_headers))
