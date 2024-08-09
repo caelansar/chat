@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 chrono = { workspace = true }
 serde = { workspace = true }
+serde_yaml = { workspace = true }
 sqlx = { workspace = true }
 jwt-simple = { workspace = true }
 anyhow = { workspace = true }

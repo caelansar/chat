@@ -447,6 +447,7 @@ dependencies = [
  "chrono",
  "jwt-simple",
  "serde",
+ "serde_yaml",
  "sqlx",
  "tokio",
  "tower",
