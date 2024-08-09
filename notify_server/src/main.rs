@@ -1,5 +1,5 @@
 use anyhow::Result;
-use notify_server::{get_router, AppConfig, AppState};
+use notify_server::{get_router, AppConfig, AppState, PgNotify};
 use tokio::net::TcpListener;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
@@ -10,7 +10,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry().with(layer).init();
 
     let config = AppConfig::load()?;
-    let state = AppState::new(config);
+    let listener = PgNotify::new(&config.server.db_url).await?;
+    let state = AppState::new(config, listener);
     let port = state.config.server.port;
 
     let app = get_router(state).await;

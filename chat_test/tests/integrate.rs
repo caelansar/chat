@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chat_core::{Chat, ChatType, Message};
 use futures::StreamExt;
+use notify_server::PgNotify;
 use reqwest::{
     multipart::{Form, Part},
     StatusCode,
@@ -51,7 +52,8 @@ impl NotifyServer {
     async fn new(db_url: &str, token: &str) -> Result<Self> {
         let mut config = notify_server::AppConfig::load()?;
         config.server.db_url = db_url.to_string();
-        let state = notify_server::AppState::new(config);
+        let listener = PgNotify::new(&config.server.db_url).await?;
+        let state = notify_server::AppState::new(config, listener);
         let app = notify_server::get_router(state).await;
         let listener = TcpListener::bind(WILD_ADDR).await?;
         let addr = listener.local_addr()?;
@@ -139,7 +141,7 @@ impl ChatServer {
     async fn signup(&self) -> Result<()> {
         let res = self
             .client
-            .post(&format!("http://{}/api/signup", self.addr))
+            .post(format!("http://{}/api/signup", self.addr))
             .header("Content-Type", "application/json")
             .body(r#"{"fullname": "cae", "email": "cae@cae.com","password":"123456","workspace": "cae"}"#)
             .send()
@@ -152,7 +154,7 @@ impl ChatServer {
     async fn signin(&self) -> Result<String> {
         let res = self
             .client
-            .post(&format!("http://{}/api/signin", self.addr))
+            .post(format!("http://{}/api/signin", self.addr))
             .header("Content-Type", "application/json")
             .body(r#"{"email": "cae@cae.org","password":"123456"}"#)
             .send()
@@ -190,7 +192,7 @@ impl ChatServer {
 
         let res = self
             .client
-            .post(&format!("http://{}/api/upload", self.addr))
+            .post(format!("http://{}/api/upload", self.addr))
             .header("Authorization", format!("Bearer {}", self.token))
             .multipart(form)
             .send()

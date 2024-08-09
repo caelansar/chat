@@ -1,3 +1,5 @@
+#![feature(impl_trait_in_assoc_type)]
+
 mod config;
 mod error;
 mod handler;
@@ -5,7 +7,8 @@ mod notify;
 
 pub use crate::config::AppConfig;
 use crate::error::AppError;
-use crate::notify::{AppEvent, Notification};
+use crate::notify::AppEvent;
+use crate::notify::Listener;
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::{
     response::{Html, IntoResponse},
@@ -15,80 +18,47 @@ use axum::{
 use chat_core::middlewares::{log_headers, verify_token, TokenVerify};
 use chat_core::{DecodingKey, User};
 use dashmap::DashMap;
-use futures::StreamExt;
 use handler::sse_handler;
-use sqlx::postgres::PgListener;
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
-use tracing::{info, warn};
+
+pub use notify::PgNotify;
 
 const INDEX_HTML: &str = include_str!("../assets/index.html");
 
 pub type UserMap = Arc<DashMap<u64, broadcast::Sender<Arc<AppEvent>>>>;
 
 #[derive(Clone)]
-pub struct AppState(Arc<AppStateInner>);
+pub struct AppState<L: Clone>(Arc<AppStateInner<L>>);
 
-pub struct AppStateInner {
+pub struct AppStateInner<L: Clone> {
     pub config: AppConfig,
-    users: UserMap,
     dk: DecodingKey,
+    listener: L,
 }
 
-pub async fn get_router(state: AppState) -> Router {
-    setup_pg_listener(state.clone()).await.unwrap();
+pub async fn get_router(state: AppState<PgNotify>) -> Router {
+    // setup_pg_listener(state.clone()).await.unwrap();
 
     Router::new()
         .route("/events", get(sse_handler))
         .layer(from_fn(log_headers))
-        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .layer(from_fn_with_state(
+            state.clone(),
+            verify_token::<AppState<PgNotify>>,
+        ))
         .route("/", get(index_handler))
         .nest_service("/assets", ServeDir::new("assets"))
         .with_state(state.clone())
-}
-
-pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
-    let mut listener = PgListener::connect(&state.config.server.db_url).await?;
-    listener.listen("chat_updated").await?;
-    listener.listen("chat_message_created").await?;
-
-    let mut stream = listener.into_stream();
-
-    tokio::spawn(async move {
-        while let Some(Ok(notification)) = stream.next().await {
-            info!("Received notification: {:?}", notification);
-            match Notification::load(notification.channel(), notification.payload()) {
-                Ok(notification) => {
-                    info!("user_ids: {:?}", notification.user_ids);
-                    for user_id in notification.user_ids {
-                        if let Some(tx) = state.users.get(&(user_id as u64)) {
-                            info!("sending notification to user: {}", user_id);
-                            if let Err(err) = tx.send(notification.event.clone()) {
-                                warn!(
-                                    "failed to send notification to user: {}, err: {:?}",
-                                    user_id, err
-                                );
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    warn!("failed to load notification: {:?}", e);
-                }
-            }
-        }
-    });
-
-    Ok(())
 }
 
 async fn index_handler() -> impl IntoResponse {
     Html(INDEX_HTML)
 }
 
-impl TokenVerify for AppState {
+impl<T: Clone> TokenVerify for AppState<T> {
     type Error = AppError;
 
     fn verify(&self, token: &str) -> Result<User, Self::Error> {
@@ -96,19 +66,22 @@ impl TokenVerify for AppState {
     }
 }
 
-impl Deref for AppState {
-    type Target = AppStateInner;
+impl<T: Clone> Deref for AppState<T> {
+    type Target = AppStateInner<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl AppState {
-    pub fn new(config: AppConfig) -> Self {
+impl<T: Listener + Clone> AppState<T> {
+    pub fn new(config: AppConfig, listener: T) -> Self {
         let dk = DecodingKey::load(&config.auth.pk).expect("Failed to load public key");
-        let users = Arc::new(DashMap::new());
-        Self(Arc::new(AppStateInner { config, dk, users }))
+        Self(Arc::new(AppStateInner {
+            config,
+            dk,
+            listener,
+        }))
     }
 }
 
