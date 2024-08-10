@@ -1,6 +1,5 @@
 use std::{
     future::Future,
-    pin::Pin,
     task::{Context, Poll},
 };
 
@@ -33,9 +32,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    // `BoxFuture` is a type alias for `Pin<Box<dyn Future + Send + 'a>>`
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    type Future = impl Future<Output = Result<Self::Response, Self::Error>> + Send + 'static;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -44,7 +41,7 @@ where
     fn call(&mut self, request: Request) -> Self::Future {
         let start = Instant::now();
         let future = self.inner.call(request);
-        Box::pin(async move {
+        async move {
             let mut res: Response = future.await?;
             let elapsed = format!("{}us", start.elapsed().as_micros());
             match elapsed.parse() {
@@ -61,6 +58,6 @@ where
             }
 
             Ok(res)
-        })
+        }
     }
 }
