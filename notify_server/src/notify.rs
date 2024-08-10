@@ -11,7 +11,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
-use tracing::{info, warn};
+use tracing::{info, instrument, warn};
 
 const CHANNEL_CAPACITY: usize = 100;
 
@@ -44,7 +44,7 @@ struct ChatMessageCreated {
     members: Vec<i64>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PgNotify {
     users: UserMap,
 }
@@ -102,6 +102,8 @@ impl Listener for PgNotify {
         + Send
         + 'static;
     type Error = Infallible;
+
+    #[instrument(skip(self))]
     fn subscribe(&self, user_id: u64) -> Self::Stream {
         let rx = if let Some(tx) = self.users.get(&user_id) {
             tx.subscribe()

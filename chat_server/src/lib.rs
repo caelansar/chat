@@ -2,10 +2,12 @@ mod config;
 mod error;
 mod handlers;
 mod models;
+mod openapi;
 
 use anyhow::Context;
 
 use handlers::*;
+use openapi::OpenApiRouter;
 use sqlx::{ConnectOptions, PgPool};
 use std::time::Duration;
 use std::{ops::Deref, sync::Arc};
@@ -65,6 +67,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
         .route("/signup", post(signup_handler));
 
     let router = Router::new()
+        .openapi()
         .route("/", get(index_handler))
         .nest("/api", api)
         .with_state(state);

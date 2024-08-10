@@ -1,5 +1,5 @@
 server:
-  port: 6666
+  port: 5555
   db_url: postgres://postgres:postgres@localhost:5432/chat
   base_dir: /tmp/chat
 auth:

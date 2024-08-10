@@ -36,6 +36,6 @@ mod test {
     fn load_config() {
         let cfg = AppConfig::load().unwrap();
 
-        assert_eq!(6666, cfg.server.port);
+        assert_eq!(5555, cfg.server.port);
     }
 }

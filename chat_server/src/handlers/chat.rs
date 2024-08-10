@@ -9,6 +9,16 @@ use axum::{
 use chat_core::User;
 use tracing::info;
 
+#[utoipa::path(
+    get,
+    path = "/api/chats",
+    responses(
+        (status = 200, description = "List of chats", body = Vec<Chat>),
+    ),
+    security(
+        ("token" = [])
+    )
+)]
 pub(crate) async fn list_chat_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
