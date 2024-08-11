@@ -7,10 +7,11 @@ use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitE
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let layer = Layer::new().with_filter(LevelFilter::DEBUG);
+    let config = AppConfig::load()?;
+
+    let layer = Layer::new().with_filter(LevelFilter::from_level(config.log_level));
     tracing_subscriber::registry().with(layer).init();
 
-    let config = AppConfig::load()?;
     let addr = format!("0.0.0.0:{}", config.server.port);
 
     let state = AppState::try_new(config).await?;
