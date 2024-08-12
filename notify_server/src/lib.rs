@@ -8,7 +8,6 @@ mod notify;
 pub use crate::config::AppConfig;
 use crate::error::AppError;
 use crate::notify::AppEvent;
-use crate::notify::Listener;
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::{
     response::{Html, IntoResponse},
@@ -74,7 +73,7 @@ impl<T: Clone> Deref for AppState<T> {
     }
 }
 
-impl<T: Listener + Clone> AppState<T> {
+impl<T: Clone> AppState<T> {
     pub fn new(config: AppConfig, listener: T) -> Self {
         let dk = DecodingKey::load(&config.auth.pk).expect("Failed to load public key");
         Self(Arc::new(AppStateInner {
@@ -87,9 +86,14 @@ impl<T: Listener + Clone> AppState<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::AppEvent;
+    use crate::notify::Listener;
+    use crate::{AppConfig, AppEvent, AppState};
+    use async_stream::try_stream;
+    use axum::response::sse::Event;
     use chat_core::{Chat, ChatType};
     use chrono::DateTime;
+    use futures::{pin_mut, StreamExt, TryStream};
+    use std::convert::Infallible;
 
     #[test]
     fn test_deserialize_app_event() {
@@ -111,5 +115,53 @@ mod tests {
         let event1: AppEvent = serde_json::from_str(&data).unwrap();
 
         assert_eq!(event, event1);
+    }
+
+    #[derive(Clone)]
+    struct TestListener;
+
+    impl Listener for TestListener {
+        type Stream = impl TryStream<Item = Result<Event, Self::Error>, Ok = Event, Error = Self::Error>
+            + Send
+            + 'static;
+        type Error = Infallible;
+
+        fn subscribe(&self, _: u64) -> Self::Stream {
+            try_stream! {
+                for i in 0..3 {
+                    let event =  Event::default().data(i.to_string());
+                    yield event;
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_app_state() {
+        let config = AppConfig::load().unwrap();
+        let state = AppState::new(config, TestListener);
+
+        let stream = state.listener.subscribe(1);
+        pin_mut!(stream);
+
+        let data = stream.next().await.unwrap().unwrap();
+        assert_eq!(
+            r#"Event { buffer: b"data: 0\n", flags: EventFlags(1) }"#,
+            format!("{data:?}")
+        );
+
+        let data = stream.next().await.unwrap().unwrap();
+        assert_eq!(
+            r#"Event { buffer: b"data: 1\n", flags: EventFlags(1) }"#,
+            format!("{data:?}")
+        );
+
+        let data = stream.next().await.unwrap().unwrap();
+        assert_eq!(
+            r#"Event { buffer: b"data: 2\n", flags: EventFlags(1) }"#,
+            format!("{data:?}")
+        );
+
+        assert!(stream.next().await.is_none());
     }
 }
