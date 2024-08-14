@@ -5,6 +5,7 @@ use crate::{
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
+use tracing::{info, instrument};
 use utoipa::ToSchema;
 
 #[derive(Debug, ToSchema, Serialize, Deserialize)]
@@ -17,12 +18,15 @@ pub struct AuthOutput {
     path = "/api/signup",
     responses(
         (status = 200, description = "User created", body = AuthOutput),
-    )
+    ),
+    tag = "auth",
 )]
+#[instrument(level = "debug", skip(state))]
 pub(crate) async fn signup_handler(
     State(state): State<AppState>,
     Json(input): Json<CreateUser>,
 ) -> Result<impl IntoResponse, AppError> {
+    info!("create user");
     let user = UserRepo::create(&input, &state.pool).await?;
     let token = state.ek.sign(user)?;
     let body = Json(AuthOutput { token });
@@ -34,12 +38,15 @@ pub(crate) async fn signup_handler(
     path = "/api/signin",
     responses(
         (status = 200, description = "User signed in", body = AuthOutput),
-    )
+    ),
+    tag = "auth",
 )]
+#[instrument(level = "debug", skip(state))]
 pub(crate) async fn signin_handler(
     State(state): State<AppState>,
     Json(input): Json<SigninUser>,
 ) -> Result<impl IntoResponse, AppError> {
+    info!("verify user");
     let user = UserRepo::verify(&input, &state.pool).await?;
 
     match user {

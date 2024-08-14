@@ -1,4 +1,5 @@
 use crate::handlers::*;
+use crate::ErrorOutput;
 use crate::{
     models::{CreateUser, SigninUser},
     AppState,
@@ -7,7 +8,7 @@ use axum::Router;
 use chat_core::{Chat, ChatType};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
-    Modify, OpenApi,
+    Modify, OpenApi, ToSchema,
 };
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
@@ -17,22 +18,31 @@ pub(crate) trait OpenApiRouter {
     fn openapi(self) -> Self;
 }
 
+#[derive(ToSchema)]
+#[allow(unused)]
+pub(crate) struct FileForm {
+    file: Vec<u8>,
+}
+
 #[derive(OpenApi)]
 #[openapi(
     paths(
         signup_handler,
         signin_handler,
         list_chat_handler,
+        create_chat_handler,
+        get_chat_handler,
+        upload_handler,
     ),
     components(
-        schemas(Chat, ChatType, SigninUser, CreateUser, AuthOutput),
+        schemas(Chat, ChatType, SigninUser, CreateUser, AuthOutput, ErrorOutput, FileForm),
     ),
     modifiers(&SecurityAddon),
     tags(
         (name = "chat", description = "Chat related operations"),
     )
 )]
-pub(crate) struct ApiDoc;
+pub struct ApiDoc;
 
 struct SecurityAddon;
 

@@ -24,6 +24,7 @@ pub use config::AppConfig;
 pub use error::AppError;
 pub use error::ErrorOutput;
 pub use models::MessageRepo;
+pub use openapi::ApiDoc;
 use sqlx::pool::PoolOptions;
 use sqlx::postgres::PgConnectOptions;
 

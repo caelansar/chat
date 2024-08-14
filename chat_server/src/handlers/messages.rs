@@ -28,6 +28,23 @@ pub(crate) async fn send_message_handler(
     Ok((StatusCode::CREATED, Json(msg)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/chats/{id}/messages",
+    params(
+        ("id" = u64, Path, description = "Chat id"),
+        ListMessages
+
+    ),
+    responses(
+        (status = 200, description = "List of messages", body = Vec<Message>),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),
+    tag = "message",
+)]
 pub(crate) async fn list_message_handler(
     State(state): State<AppState>,
     Path(id): Path<u64>,
@@ -36,6 +53,7 @@ pub(crate) async fn list_message_handler(
     let messages = state.message.list_messages(&state.pool, input, id).await?;
     Ok(Json(messages))
 }
+
 pub(crate) async fn file_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
@@ -63,6 +81,20 @@ pub(crate) async fn file_handler(
     Ok((headers, body))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/upload",
+    request_body(
+        content_type = "multipart/form-data", content = FileForm,
+    ),
+    responses(
+        (status = 400, description = "Chat file error", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),
+    tag = "message",
+)]
 pub(crate) async fn upload_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
