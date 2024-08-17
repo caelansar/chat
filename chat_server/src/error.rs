@@ -47,6 +47,9 @@ pub enum AppError {
 
     #[error("{0}")]
     ChatFileError(String),
+
+    #[error("no man's land")]
+    StatusNotFound,
 }
 
 impl IntoResponse for AppError {
@@ -61,6 +64,7 @@ impl IntoResponse for AppError {
             Self::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::CreateMessageError(_) => StatusCode::BAD_REQUEST,
             Self::ChatFileError(_) => StatusCode::BAD_REQUEST,
+            Self::StatusNotFound => StatusCode::NOT_FOUND,
         };
 
         (status, Json(ErrorOutput::new(self.to_string()))).into_response()

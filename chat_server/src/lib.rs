@@ -73,7 +73,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
         .nest("/api", api)
         .with_state(state);
 
-    Ok(set_layer(router).fallback(|| async { (StatusCode::NOT_FOUND, "no man's land") }))
+    Ok(set_layer(router).fallback(|| async { (StatusCode::NOT_FOUND, AppError::StatusNotFound) }))
 }
 
 impl Deref for AppState {
