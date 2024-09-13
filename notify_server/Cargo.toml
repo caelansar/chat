@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-async-stream = "0.3.5"
+async-stream = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
 chat-core = { workspace = true }
@@ -22,6 +22,6 @@ sqlx = { workspace = true }
 thiserror = { workspace = true }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 tokio = { workspace = true }
-tokio-stream = { version = "0.1.15", features = ["sync"] }
+tokio-stream = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

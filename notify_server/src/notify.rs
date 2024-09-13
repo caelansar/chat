@@ -1,7 +1,7 @@
 use crate::UserMap;
 use axum::response::sse::Event;
 use axum::BoxError;
-use chat_core::{Chat, Message};
+use chat_core::{AppEvent, Chat, Message};
 use dashmap::DashMap;
 use futures::TryStream;
 use serde::{Deserialize, Serialize};
@@ -14,15 +14,6 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use tracing::{info, instrument, warn};
 
 const CHANNEL_CAPACITY: usize = 100;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "event")]
-pub enum AppEvent {
-    NewChat(Chat),
-    AddToChat(Chat),
-    RemoveFromChat(Chat),
-    NewMessage(Message),
-}
 
 #[derive(Debug)]
 pub(crate) struct Notification {

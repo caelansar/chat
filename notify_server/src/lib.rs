@@ -7,7 +7,6 @@ mod notify;
 
 pub use crate::config::AppConfig;
 use crate::error::AppError;
-use crate::notify::AppEvent;
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::{
     response::{Html, IntoResponse},
@@ -15,7 +14,7 @@ use axum::{
     Router,
 };
 use chat_core::middlewares::{log_headers, verify_token, TokenVerify};
-use chat_core::{DecodingKey, User};
+use chat_core::{AppEvent, DecodingKey, User};
 use dashmap::DashMap;
 use handler::sse_handler;
 use std::ops::Deref;
@@ -87,10 +86,9 @@ impl<T: Clone> AppState<T> {
 #[cfg(test)]
 mod tests {
     use crate::notify::Listener;
-    use crate::{AppConfig, AppEvent, AppState};
-    use async_stream::try_stream;
+    use crate::{AppConfig, AppState};
     use axum::response::sse::Event;
-    use chat_core::{Chat, ChatType};
+    use chat_core::{AppEvent, Chat, ChatType};
     use chrono::DateTime;
     use futures::{pin_mut, StreamExt, TryStream};
     use std::convert::Infallible;
@@ -127,12 +125,10 @@ mod tests {
         type Error = Infallible;
 
         fn subscribe(&self, _: u64) -> Self::Stream {
-            try_stream! {
-                for i in 0..3 {
-                    let event =  Event::default().data(i.to_string());
-                    yield event;
-                }
-            }
+            tokio_stream::iter(0..3).map(|i| {
+                let event = Event::default().data(i.to_string());
+                Ok(event)
+            })
         }
     }
 

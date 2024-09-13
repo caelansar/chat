@@ -1,10 +1,12 @@
 #![feature(impl_trait_in_assoc_type)]
 
+mod pubsub;
 mod utils;
 
 pub mod middlewares;
 
 use chrono::{DateTime, Utc};
+pub use pubsub::AppEvent;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 pub use utils::*;
