@@ -1,4 +1,5 @@
 #![feature(impl_trait_in_assoc_type)]
+#![allow(deprecated)]
 
 mod config;
 mod error;
@@ -14,15 +15,13 @@ use axum::{
     Router,
 };
 use chat_core::middlewares::{log_headers, verify_token, TokenVerify};
-use chat_core::{AppEvent, DecodingKey, User};
+use chat_core::{AppEvent, DecodingKey, PgSubscriber, User};
 use dashmap::DashMap;
 use handler::sse_handler;
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
-
-pub use notify::PgNotify;
 
 const INDEX_HTML: &str = include_str!("../assets/index.html");
 
@@ -37,7 +36,7 @@ pub struct AppStateInner<L: Clone> {
     listener: L,
 }
 
-pub async fn get_router(state: AppState<PgNotify>) -> Router {
+pub async fn get_router(state: AppState<PgSubscriber>) -> Router {
     // setup_pg_listener(state.clone()).await.unwrap();
 
     Router::new()
@@ -45,7 +44,7 @@ pub async fn get_router(state: AppState<PgNotify>) -> Router {
         .layer(from_fn(log_headers))
         .layer(from_fn_with_state(
             state.clone(),
-            verify_token::<AppState<PgNotify>>,
+            verify_token::<AppState<PgSubscriber>>,
         ))
         .route("/", get(index_handler))
         .nest_service("/assets", ServeDir::new("assets"))

@@ -6,7 +6,7 @@ mod utils;
 pub mod middlewares;
 
 use chrono::{DateTime, Utc};
-pub use pubsub::AppEvent;
+pub use pubsub::{pg::PgSubscriber, AppEvent, Subscriber};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 pub use utils::*;
