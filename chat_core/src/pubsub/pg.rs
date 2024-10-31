@@ -1,6 +1,8 @@
 use dashmap::DashMap;
 use futures::{Stream, StreamExt};
+use serde::Serialize;
 use sqlx::postgres::PgListener;
+use sqlx::Executor;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
@@ -10,6 +12,18 @@ use crate::pubsub::{notification::Notification, AppMessage, Subscriber};
 #[derive(Clone)]
 pub struct PgSubscriber {
     users: Arc<DashMap<u64, broadcast::Sender<Arc<AppMessage>>>>,
+}
+
+pub struct PgPublisher {
+    pool: sqlx::PgPool,
+}
+
+impl PgPublisher {
+    async fn new(db_url: impl AsRef<str>) -> anyhow::Result<Self> {
+        let pool = sqlx::pool::Pool::connect(db_url.as_ref()).await?;
+
+        Ok(PgPublisher { pool })
+    }
 }
 
 impl PgSubscriber {
@@ -55,6 +69,24 @@ impl PgSubscriber {
     }
 }
 
+impl PgPublisher {
+    async fn publish<P: Serialize>(
+        &self,
+        topic: impl AsRef<str>,
+        payload: P,
+    ) -> anyhow::Result<()> {
+        let notify = format!(
+            "NOTIFY {}, '{}'",
+            topic.as_ref(),
+            serde_json::to_string(&payload)?
+        );
+        println!("{}", notify);
+
+        self.pool.execute(notify.as_ref()).await?;
+        Ok(())
+    }
+}
+
 impl Subscriber for PgSubscriber {
     type Stream = impl Stream<Item = AppMessage> + Send + 'static;
 
@@ -74,20 +106,30 @@ impl Subscriber for PgSubscriber {
 
 #[cfg(test)]
 mod tests {
+    use crate::{AppEvent, Chat, ChatType};
     use futures::pin_mut;
     use sqlx::Executor as _;
     use sqlx_db_tester::TestPg;
-
-    use crate::{AppEvent, ChatType};
+    use tracing::level_filters::LevelFilter;
+    use tracing::Level;
 
     use super::*;
+    use crate::pubsub::notification::ChatUpdated;
+    use tracing_subscriber::{
+        fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _,
+    };
 
     #[tokio::test]
     async fn test_pg_subscriber() -> anyhow::Result<()> {
         let tdb = get_test_pool(None).await;
 
+        let layer = Layer::new().with_filter(LevelFilter::from_level(Level::DEBUG));
+        tracing_subscriber::registry().with(layer).init();
+
         let subscriber = PgSubscriber::new(tdb.url()).await;
         assert!(subscriber.is_ok());
+
+        let publisher = PgPublisher::new(tdb.url()).await?;
 
         let stream = subscriber?.subscribe(1).await?;
 
@@ -97,7 +139,8 @@ mod tests {
             let message2 = stream.next().await.unwrap();
             assert_eq!(message1.user_id, 1);
             if let AppEvent::NewChat(chat) = &message1.event {
-                assert_eq!(chat.id, 5);
+                assert_eq!(chat.id, 99);
+                assert_eq!(chat.name, Some("a".to_string()));
                 assert_eq!(chat.members, vec![1, 2]);
                 assert_eq!(chat.r#type, ChatType::Single);
             } else {
@@ -105,7 +148,8 @@ mod tests {
             }
             assert_eq!(message2.user_id, 1);
             if let AppEvent::NewChat(chat) = &message2.event {
-                assert_eq!(chat.id, 6);
+                assert_eq!(chat.id, 100);
+                assert_eq!(chat.name, Some("b".to_string()));
                 assert_eq!(chat.members, vec![1, 3, 4]);
                 assert_eq!(chat.r#type, ChatType::Group);
             } else {
@@ -113,11 +157,46 @@ mod tests {
             }
         });
 
-        let pool = tdb.get_pool().await;
-        let query = "INSERT INTO chats(ws_id, type, members) VALUES (1, 'single', '{1,2}'), (1, 'group', '{1,3,4}')";
-        pool.execute(query)
-            .await
-            .expect("Failed to insert test chats");
+        // let pool = tdb.get_pool().await;
+        // let query = "INSERT INTO chats(ws_id, type, members) VALUES (1, 'single', '{1,2}'), (1, 'group', '{1,3,4}')";
+        // pool.execute(query)
+        //     .await
+        //     .expect("Failed to insert test chats");
+        publisher
+            .publish(
+                "chat_updated",
+                ChatUpdated {
+                    op: "INSERT".to_string(),
+                    old: None,
+                    new: Some(Chat {
+                        id: 99,
+                        ws_id: 99,
+                        name: Some("a".to_string()),
+                        r#type: ChatType::Single,
+                        members: vec![1, 2],
+                        created_at: Default::default(),
+                    }),
+                },
+            )
+            .await?;
+
+        publisher
+            .publish(
+                "chat_updated",
+                ChatUpdated {
+                    op: "INSERT".to_string(),
+                    old: None,
+                    new: Some(Chat {
+                        id: 100,
+                        ws_id: 99,
+                        name: Some("b".to_string()),
+                        r#type: ChatType::Group,
+                        members: vec![1, 3, 4],
+                        created_at: Default::default(),
+                    }),
+                },
+            )
+            .await?;
 
         handle.await?;
 

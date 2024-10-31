@@ -12,10 +12,10 @@ pub(crate) struct Notification {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ChatUpdated {
-    op: String,
-    old: Option<Chat>,
-    new: Option<Chat>,
+pub(crate) struct ChatUpdated {
+    pub(crate) op: String,
+    pub(crate) old: Option<Chat>,
+    pub(crate) new: Option<Chat>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
