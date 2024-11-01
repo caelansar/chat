@@ -14,16 +14,9 @@ pub struct PgSubscriber {
     users: Arc<DashMap<u64, broadcast::Sender<Arc<AppMessage>>>>,
 }
 
+#[allow(dead_code)]
 pub struct PgPublisher {
     pool: sqlx::PgPool,
-}
-
-impl PgPublisher {
-    async fn new(db_url: impl AsRef<str>) -> anyhow::Result<Self> {
-        let pool = sqlx::pool::Pool::connect(db_url.as_ref()).await?;
-
-        Ok(PgPublisher { pool })
-    }
 }
 
 impl PgSubscriber {
@@ -69,7 +62,14 @@ impl PgSubscriber {
     }
 }
 
+#[allow(dead_code)]
 impl PgPublisher {
+    async fn new(db_url: impl AsRef<str>) -> anyhow::Result<Self> {
+        let pool = sqlx::pool::Pool::connect(db_url.as_ref()).await?;
+
+        Ok(PgPublisher { pool })
+    }
+
     async fn publish<P: Serialize>(
         &self,
         topic: impl AsRef<str>,
