@@ -10,6 +10,7 @@ use lapin::{
     types::{AMQPValue, FieldTable},
     BasicProperties, Connection,
 };
+use serde::Serialize;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
@@ -168,14 +169,14 @@ impl Subscriber for RabbitMqPubSub {
 }
 
 impl Publisher for RabbitMqPubSub {
-    async fn publish(&self, event: AppMessage) -> anyhow::Result<()> {
+    async fn publish<P: Serialize>(&self, topic: &str, payload: P) -> anyhow::Result<()> {
         let channel = self.connection.create_channel().await?;
         channel
             .basic_publish(
-                "chat.exchange",
+                topic,
                 "",
                 BasicPublishOptions::default(),
-                &serde_json::to_vec(&event)?,
+                &serde_json::to_vec(&payload)?,
                 BasicProperties::default(),
             )
             .await?;
@@ -228,33 +229,39 @@ mod tests {
         info!("publishing message1");
         // this message should be routed to user 1
         pubsub
-            .publish(AppMessage {
-                user_id: 1,
-                event: AppEvent::NewChat(crate::Chat {
-                    id: 1,
-                    ws_id: 1,
-                    r#type: ChatType::Group,
-                    members: vec![1, 2, 3],
-                    created_at: chrono::Utc::now(),
-                    name: Some("Test1".to_string()),
-                }),
-            })
+            .publish(
+                "chat.exchange",
+                AppMessage {
+                    user_id: 1,
+                    event: AppEvent::NewChat(crate::Chat {
+                        id: 1,
+                        ws_id: 1,
+                        r#type: ChatType::Group,
+                        members: vec![1, 2, 3],
+                        created_at: chrono::Utc::now(),
+                        name: Some("Test1".to_string()),
+                    }),
+                },
+            )
             .await?;
 
         info!("publishing message2");
         // this message should be routed to user 2
         pubsub
-            .publish(AppMessage {
-                user_id: 2,
-                event: AppEvent::NewChat(crate::Chat {
-                    id: 2,
-                    ws_id: 2,
-                    r#type: ChatType::Group,
-                    members: vec![2, 3, 4],
-                    created_at: chrono::Utc::now(),
-                    name: Some("Test2".to_string()),
-                }),
-            })
+            .publish(
+                "chat.exchange",
+                AppMessage {
+                    user_id: 2,
+                    event: AppEvent::NewChat(crate::Chat {
+                        id: 2,
+                        ws_id: 2,
+                        r#type: ChatType::Group,
+                        members: vec![2, 3, 4],
+                        created_at: chrono::Utc::now(),
+                        name: Some("Test2".to_string()),
+                    }),
+                },
+            )
             .await?;
 
         handle.await?;

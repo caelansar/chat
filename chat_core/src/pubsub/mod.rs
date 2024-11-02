@@ -19,7 +19,7 @@ pub trait Subscriber {
 pub trait Publisher {
     #[allow(unused)]
     #[allow(async_fn_in_trait)]
-    async fn publish(&self, event: AppMessage) -> anyhow::Result<()>;
+    async fn publish<P: Serialize>(&self, topic: &str, payload: P) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]

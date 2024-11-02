@@ -9,6 +9,8 @@ use tracing::{info, warn};
 
 use crate::pubsub::{notification::Notification, AppMessage, Subscriber};
 
+use super::Publisher;
+
 #[derive(Clone)]
 pub struct PgSubscriber {
     users: Arc<DashMap<u64, broadcast::Sender<Arc<AppMessage>>>>,
@@ -69,17 +71,11 @@ impl PgPublisher {
 
         Ok(PgPublisher { pool })
     }
+}
 
-    async fn publish<P: Serialize>(
-        &self,
-        topic: impl AsRef<str>,
-        payload: P,
-    ) -> anyhow::Result<()> {
-        let notify = format!(
-            "NOTIFY {}, '{}'",
-            topic.as_ref(),
-            serde_json::to_string(&payload)?
-        );
+impl Publisher for PgPublisher {
+    async fn publish<P: Serialize>(&self, topic: &str, payload: P) -> anyhow::Result<()> {
+        let notify = format!("NOTIFY {}, '{}'", topic, serde_json::to_string(&payload)?);
         println!("{}", notify);
 
         self.pool.execute(notify.as_ref()).await?;
